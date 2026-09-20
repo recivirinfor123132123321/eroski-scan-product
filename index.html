@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D8102A">
+<title>Mi compra en Eroski</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #D8102A;
+    --ink: #17191C;
+    --muted: #5B6470;
+    --line: #C3C9CF;
+    --bg: #E9ECEF;
+    --paper: #FFFFFF;
+    --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+    --body: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--body);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.4;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid #1A5FFF; outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  /* ---------- Cabecera con el total ---------- */
+  .hero {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--red); color: #fff;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 16px;
+  }
+  .hero-in {
+    max-width: 640px; margin: 0 auto;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  }
+  .hero-title { font-family: var(--display); font-weight: 700; font-size: 1.25rem; letter-spacing: -0.01em; }
+  .hero-sub { font-size: .9rem; opacity: .92; }
+  .total {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(2.2rem, 10vw, 3.2rem); line-height: 1;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- Ticket ---------- */
+  .wrap { max-width: 640px; margin: 20px auto 0; padding: 0 14px; }
+  .ticket { background: var(--paper); border-radius: 6px 6px 0 0; position: relative; margin-bottom: 30px; }
+  .ticket::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8' viewBox='0 0 16 8'%3E%3Cpath d='M0 0h16L8 8z' fill='%23fff'/%3E%3C/svg%3E") repeat-x;
+  }
+  .items { list-style: none; margin: 0; padding: 0; }
+  .row {
+    display: grid; grid-template-columns: auto 1fr auto; column-gap: 12px; align-items: center;
+    padding: 14px 18px; border-bottom: 1.5px dashed var(--line);
+  }
+  .row.noimg { grid-template-columns: 1fr auto; }
+  .thumb { width: 48px; height: 48px; object-fit: contain; border-radius: 8px; background: #F3F4F6; }
+  .name { font-weight: 700; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .amount { font-family: var(--display); font-weight: 700; font-size: 1.2rem; font-variant-numeric: tabular-nums; text-align: right; }
+  .ctl { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .ctl .spacer { flex: 1; }
+  .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--ink); border-radius: 999px; }
+  .stepper button { width: 42px; height: 38px; border: 0; background: none; font-size: 1.3rem; cursor: pointer; border-radius: 999px; }
+  .stepper button:disabled { opacity: .3; cursor: default; }
+  .stepper .n { min-width: 30px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .link { background: none; border: 0; padding: 10px 8px; text-decoration: underline; font-size: .92rem; cursor: pointer; }
+  .link.danger { color: var(--red); }
+  .empty { padding: 36px 24px 40px; text-align: center; color: var(--muted); }
+  .empty strong { display: block; color: var(--ink); font-family: var(--display); font-size: 1.3rem; margin-bottom: 6px; }
+  .ticket-foot { padding: 16px 14px 12px; text-align: center; border-top: 1.5px dashed var(--line); }
+  .ticket-foot .link { color: var(--muted); }
+
+  /* ---------- Barra inferior ---------- */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+    background: var(--paper); border-top: 1px solid var(--line);
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  }
+  .dock-in { max-width: 640px; margin: 0 auto; display: flex; gap: 10px; }
+  .btn {
+    min-height: 52px; padding: 12px 18px; border-radius: 12px; border: 2px solid var(--ink);
+    font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--paper);
+  }
+  .btn.primary { background: var(--ink); color: #fff; flex: 1; }
+  .btn:active { transform: translateY(1px); }
+
+  /* ---------- Hojas (diálogos) ---------- */
+  dialog.sheet {
+    border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; max-height: 94dvh;
+    background: var(--paper); color: var(--ink); border-radius: 20px 20px 0 0; overflow: auto;
+  }
+  dialog.sheet::backdrop { background: rgba(23, 25, 28, .6); }
+  @media (min-width: 640px) { dialog.sheet { margin: auto; border-radius: 16px; } }
+  .sheet-body { padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .sheet h2 { margin: 0; font-family: var(--display); font-size: 1.3rem; letter-spacing: -0.01em; }
+  #reader { width: 100%; min-height: 220px; background: #000; border-radius: 12px; overflow: hidden; }
+  .hint { color: var(--muted); font-size: .92rem; margin: 10px 0; }
+  .hint.err { color: var(--red); }
+  .codeform { display: flex; gap: 8px; margin-top: 8px; }
+  .codeform input { flex: 1; min-width: 0; }
+
+  label { display: block; font-weight: 700; font-size: .92rem; margin: 14px 0 6px; }
+  input[type=text], input[type=number] {
+    width: 100%; height: 50px; padding: 0 14px; font-size: 1rem;
+    border: 1.5px solid var(--ink); border-radius: 10px; background: #fff;
+  }
+  .product { display: flex; gap: 12px; align-items: center; }
+  .product img { width: 64px; height: 64px; object-fit: contain; border-radius: 10px; background: #F3F4F6; flex: none; }
+  .product .grow { flex: 1; min-width: 0; }
+  .code { color: var(--muted); font-size: .85rem; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .status { font-size: .9rem; color: var(--muted); min-height: 1.3em; margin-top: 6px; }
+  .qty-row { display: flex; align-items: center; gap: 10px; }
+  .qty-row .stepper button { width: 52px; height: 50px; }
+  .qty-row input { width: 70px; text-align: center; font-weight: 700; }
+  .price-hint { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+  .price-hint.warn { color: #8A4B00; }
+  .price-view {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border: 1.5px solid var(--ink); border-radius: 10px; padding: 8px 8px 8px 16px;
+  }
+  .price-big { font-family: var(--display); font-weight: 800; font-size: 1.9rem; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .notice { background: #FFF3CD; border-radius: 10px; padding: 10px 12px; font-size: .92rem; margin-top: 12px; }
+  .sub-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 18px; padding-top: 12px; border-top: 1.5px dashed var(--line);
+  }
+  .sub-line span:last-child { font-family: var(--display); font-weight: 800; font-size: 1.7rem; font-variant-numeric: tabular-nums; }
+  .error { color: var(--red); font-weight: 700; font-size: .92rem; margin-top: 10px; min-height: 1.2em; }
+  .actions { display: flex; gap: 10px; margin-top: 12px; }
+  .actions .btn { flex: 1; }
+  .ext { display: inline-block; margin-top: 12px; font-size: .9rem; color: var(--muted); }
+
+  /* ---------- Terminar compra e historial ---------- */
+  .btn.finish { background: var(--red); border-color: var(--red); color: #fff; width: 100%; }
+  .hero-title { display: flex; align-items: center; }
+  .hero-btn {
+    margin-left: 12px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+    background: rgba(255,255,255,.16); border: 1.5px solid rgba(255,255,255,.75); color: #fff;
+    font-family: var(--body); font-size: .85rem; font-weight: 700; letter-spacing: 0;
+  }
+  .tabs { display: flex; gap: 6px; margin: 4px 0 14px; border-bottom: 1.5px solid var(--line); }
+  .tab {
+    background: none; border: 0; padding: 10px 14px; font-weight: 700; color: var(--muted); cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -1.5px;
+  }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--red); }
+  .purchase { border-bottom: 1.5px dashed var(--line); }
+  .purchase summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 0; cursor: pointer; }
+  .purchase summary::-webkit-details-marker { display: none; }
+  .purchase summary::after {
+    content: ""; width: 8px; height: 8px; margin: 0 4px 4px 2px; flex: none;
+    border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(45deg); transition: transform .15s;
+  }
+  .purchase[open] summary::after { transform: rotate(225deg); margin-bottom: 0; }
+  .purchase .pinfo { flex: 1; min-width: 0; }
+  .pdate { font-weight: 700; }
+  .pmeta { color: var(--muted); font-size: .88rem; }
+  .ptotal { font-family: var(--display); font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .plist { list-style: none; margin: 0 0 8px; padding: 0; }
+  .plist li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: .95rem; }
+  .plist .pa { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pactions { display: flex; gap: 8px; padding-bottom: 14px; }
+  .prow { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; padding: 12px 0; border-bottom: 1.5px dashed var(--line); }
+  .prow .link { grid-column: 1 / -1; justify-self: start; padding: 6px 0 0; }
+  .hsum { color: var(--muted); font-size: .92rem; margin: 0 0 6px; }
+  #finishDlg .plist { max-height: 34dvh; overflow: auto; }
+
+  /* ---------- Intentos de escaneo ---------- */
+  .attempts { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: .88rem; color: var(--muted); font-weight: 500; }
+  .attempts .dots { display: inline-flex; gap: 5px; }
+  .attempts i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .attempts i.cur { background: var(--ink); }
+  .attempts i.bad { background: var(--red); }
+  #rescanBtn { width: 100%; margin-top: 4px; }
+
+  /* ---------- Borrar ---------- */
+  .btn-del {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    background: none; color: var(--red); border: 1.5px solid #EDB3BB; border-radius: 999px;
+    padding: 6px 12px; font-size: .88rem; font-weight: 700;
+  }
+  .btn-del:hover { background: #FDE8EB; }
+  .btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .cf { text-align: center; }
+  .cf-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: #FDE8EB; color: var(--red);
+    display: grid; place-items: center; margin: 6px auto 14px;
+  }
+  .cf h2 { font-size: 1.4rem; }
+  .cf-item {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    border: 1.5px dashed var(--line); border-radius: 12px; padding: 10px 14px; margin: 16px 0 4px;
+  }
+  .cf-item .grow { flex: 1; min-width: 0; }
+  .cf-text { color: var(--muted); margin: 12px 0 4px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translate(-50%, 12px);
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: .92rem; font-weight: 500;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 20; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div>
+      <div class="hero-title">Mi compra <button class="hero-btn" id="histBtn" type="button">Historial</button></div>
+      <div class="hero-sub" id="count">Lista vacía</div>
+    </div>
+    <output class="total" id="total" aria-live="polite">0,00 €</output>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="ticket" aria-label="Lista de la compra">
+    <div class="empty" id="empty">
+      <strong>Todavía no llevas nada</strong>
+      Pulsa «Escanear producto» y apunta la cámara al código de barras.
+    </div>
+    <ul class="items" id="items"></ul>
+    <div class="ticket-foot" id="foot" hidden>
+      <button class="btn finish" id="finishBtn" type="button">Terminar compra</button>
+      <button class="link" id="clearBtn" type="button">Vaciar la lista sin guardar</button>
+    </div>
+  </section>
+</main>
+
+<nav class="dock" aria-label="Acciones">
+  <div class="dock-in">
+    <button class="btn primary" id="scanBtn" type="button">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="4" width="2" height="16"/><rect x="6" y="4" width="1" height="16"/><rect x="9" y="4" width="3" height="16"/><rect x="14" y="4" width="1" height="16"/><rect x="17" y="4" width="2" height="16"/><rect x="21" y="4" width="1" height="16"/></svg>
+      Escanear producto
+    </button>
+    <button class="btn" id="manualBtn" type="button">Sin código</button>
+  </div>
+</nav>
+
+<!-- Escáner -->
+<dialog class="sheet" id="scanDlg" aria-labelledby="scanTitle">
+  <div class="sheet-body">
+    <div class="sheet-head">
+      <h2 id="scanTitle">Escanear código de barras</h2>
+      <button class="link" id="scanClose" type="button">Cerrar</button>
+    </div>
+    <div id="reader"></div>
+    <div class="attempts" id="attempts">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span id="attemptLabel">Intento 1 de 3</span>
+    </div>
+    <p class="hint" id="scanMsg" role="status">Iniciando cámara…</p>
+    <button class="btn" id="rescanBtn" type="button" hidden>Volver a escanear</button>
+    <form class="codeform" id="codeForm">
+      <input type="text" id="codeIn" inputmode="numeric" autocomplete="off" placeholder="¿No se lee? Escribe el número" aria-label="Número del código de barras">
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+  </div>
+</dialog>
+
+<!-- Añadir / editar producto -->
+<dialog class="sheet" id="itemDlg" aria-labelledby="itemTitle">
+  <form class="sheet-body" id="itemForm" novalidate>
+    <div class="sheet-head">
+      <h2 id="itemTitle">Añadir a la compra</h2>
+      <button class="link" id="itemClose" type="button">Cancelar</button>
+    </div>
+
+    <div class="product">
+      <img id="itemImg" alt="" hidden>
+      <div class="grow">
+        <input type="text" id="nameIn" autocomplete="off" placeholder="Nombre del producto" aria-label="Nombre del producto">
+        <div class="code" id="codeLine"></div>
+      </div>
+    </div>
+    <div class="status" id="lookupStatus" role="status"></div>
+
+    <label for="qtyIn">¿Cuántos has cogido?</label>
+    <div class="qty-row">
+      <div class="stepper">
+        <button type="button" id="qtyMinus" aria-label="Una unidad menos">−</button>
+      </div>
+      <input type="text" id="qtyIn" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1" aria-label="Cantidad">
+      <div class="stepper">
+        <button type="button" id="qtyPlus" aria-label="Una unidad más">+</button>
+      </div>
+    </div>
+
+    <label for="priceIn">Precio por unidad (€)</label>
+    <div class="price-view" id="priceView" hidden>
+      <span class="price-big" id="priceBig"></span>
+      <button class="btn" type="button" id="priceFix">Corregir</button>
+    </div>
+    <div id="priceEdit">
+      <input type="text" id="priceIn" inputmode="decimal" autocomplete="off" placeholder="0,00">
+    </div>
+    <div class="price-hint" id="priceHint"></div>
+
+    <div class="notice" id="notice" hidden></div>
+
+    <div class="sub-line"><span>Importe</span><span id="subtotal">0,00 €</span></div>
+    <div class="error" id="formError" role="alert"></div>
+
+    <div class="actions">
+      <button class="btn" type="button" id="itemCancel">Cancelar</button>
+      <button class="btn primary" type="submit" id="itemOk">Confirmar y añadir</button>
+    </div>
+    <a class="ext" id="eroskiLink" href="https://supermercado.eroski.es/" target="_blank" rel="noopener">Comprobar el precio en supermercado.eroski.es</a>
+  </form>
+</dialog>
+
+<!-- Confirmar borrado -->
+<dialog class="sheet" id="confirmDlg" aria-labelledby="cfTitle" aria-describedby="cfText">
+  <div class="sheet-body cf">
+    <div class="cf-icon" id="cfIcon" aria-hidden="true"></div>
+    <h2 id="cfTitle"></h2>
+    <div class="cf-item" id="cfItem" hidden></div>
+    <p class="cf-text" id="cfText"></p>
+    <div class="actions">
+      <button class="btn" type="button" id="cfCancel">Cancelar</button>
+      <button class="btn danger" type="button" id="cfOk">Sí, quitar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Terminar compra -->
+<dialog class="sheet" id="finishDlg" aria-labelledby="finishTitle">
+  <div class="sheet-body">
+    <div class="sheet-head">
+      <h2 id="finishTitle">Terminar la compra</h2>
+      <button class="link" id="finishClose" type="button">Cerrar</button>
+    </div>
+    <p class="hint" id="finishInfo"></p>
+    <ul class="plist" id="finishItems"></ul>
+    <div class="sub-line"><span>Total</span><span id="finishTotal">0,00 €</span></div>
+    <p class="hint">Al terminar, la compra se guarda en el historial y la lista queda vacía para la próxima.</p>
+    <div class="actions">
+      <button class="btn" type="button" id="finishBack">Seguir comprando</button>
+      <button class="btn primary" type="button" id="finishOk">Guardar y terminar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Historial -->
+<dialog class="sheet" id="histDlg" aria-labelledby="histTitle">
+  <div class="sheet-body">
+    <div class="sheet-head">
+      <h2 id="histTitle">Historial</h2>
+      <button class="link" id="histClose" type="button">Cerrar</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tabPurchases" data-tab="purchases" type="button">Compras</button>
+      <button class="tab" role="tab" id="tabProducts" data-tab="products" type="button">Productos comprados</button>
+    </div>
+    <div id="histBody" role="tabpanel"></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- Utilidades ---------- */
+  const $ = (s) => document.querySelector(s);
+  const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+  const LS_LIST = 'eroski.lista.v1';
+  const LS_CAT = 'eroski.catalogo.v1';
+
+  function load(key, fallback) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch (e) { return fallback; }
+  }
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* almacenamiento no disponible */ }
+  }
+  const fmtInput = (n) => n.toFixed(2).replace('.', ',');
+  function parsePrice(s) {
+    const n = parseFloat(String(s).trim().replace(/[\s€]/g, '').replace(',', '.'));
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+  }
+  const safeUrl = (u) => (typeof u === 'string' && /^https:\/\//i.test(u)) ? u : '';
+
+  function el(tag, props = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else n.setAttribute(k, v);
+    }
+    kids.forEach((c) => c && n.append(c));
+    return n;
+  }
+
+  const TRASH_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
+
+  function trashButton(attrs, label) {
+    const b = el('button', { class: 'btn-del', type: 'button', ...attrs });
+    b.innerHTML = TRASH_SVG;                       // icono fijo, sin datos del usuario
+    b.append(el('span', { text: label }));
+    return b;
+  }
+
+  /* Diálogo de confirmación propio (sustituye a confirm()). Devuelve una promesa true/false */
+  let cfResolve = null;
+  function askConfirm({ title, text = '', okText = 'Sí, quitar', item = null }) {
+    return new Promise((resolve) => {
+      $('#cfTitle').textContent = title;
+      $('#cfText').textContent = text;
+      $('#cfText').hidden = !text;
+      $('#cfOk').textContent = okText;
+      const box = $('#cfItem');
+      box.replaceChildren();
+      box.hidden = !item;
+      if (item) {
+        if (item.image) box.append(el('img', { class: 'thumb', src: item.image, alt: '' }));
+        box.append(
+          el('div', { class: 'grow' },
+            el('div', { class: 'name', text: item.name }),
+            el('div', { class: 'meta', text: item.meta })
+          ),
+          el('div', { class: 'amount', text: item.amount })
+        );
+      }
+      if (cfResolve) cfResolve(false);
+      cfResolve = resolve;
+      $('#confirmDlg').showModal();
+      $('#cfCancel').focus();                      // por seguridad, el foco empieza en «Cancelar»
+    });
+  }
+  function closeConfirm(answer) {
+    const r = cfResolve; cfResolve = null;
+    if ($('#confirmDlg').open) $('#confirmDlg').close();
+    if (r) r(answer);
+  }
+  $('#cfIcon').innerHTML = TRASH_SVG.replace('width="16" height="16"', 'width="28" height="28"');
+  $('#cfOk').addEventListener('click', () => closeConfirm(true));
+  $('#cfCancel').addEventListener('click', () => closeConfirm(false));
+  $('#confirmDlg').addEventListener('close', () => closeConfirm(false));   // Esc o toque fuera
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  /* Comprueba que un código EAN-8, UPC-A o EAN-13 sea válido (dígito de control) */
+  function validBarcode(c) {
+    if (!/^(\d{8}|\d{12}|\d{13})$/.test(c)) return false;
+    const d = c.split('').map(Number);
+    const check = d.pop();
+    let sum = 0;
+    for (let i = d.length - 1, w = 3; i >= 0; i--, w = (w === 3 ? 1 : 3)) sum += d[i] * w;
+    return (10 - (sum % 10)) % 10 === check;
+  }
+
+  /* ---------- Estado ---------- */
+  let list = load(LS_LIST, []);      // [{key, code, name, price, qty, image}]
+  let catalog = load(LS_CAT, {});    // key -> {name, price, image}  (recuerda lo que ya has comprado)
+
+  const LS_HIST = 'eroski.historial.v1';
+  let history = load(LS_HIST, []);   // compras terminadas: [{id, date, items, total, units}]
+
+  function persist() { save(LS_LIST, list); save(LS_CAT, catalog); save(LS_HIST, history); }
+
+  /* ---------- Lista ---------- */
+  function render() {
+    const ul = $('#items');
+    ul.replaceChildren();
+    let total = 0, units = 0;
+
+    for (const it of list) {
+      const sub = it.price * it.qty;
+      total += sub; units += it.qty;
+
+      const li = el('li', { class: 'row' + (it.image ? '' : ' noimg'), 'data-key': it.key });
+      if (it.image) li.append(el('img', { class: 'thumb', src: it.image, alt: '', loading: 'lazy' }));
+      li.append(
+        el('div', {},
+          el('div', { class: 'name', text: it.name }),
+          el('div', { class: 'meta', text: `${money.format(it.price)} × ${it.qty}` })
+        ),
+        el('div', { class: 'amount', text: money.format(sub) })
+      );
+
+      const minus = el('button', { type: 'button', 'data-act': 'minus', 'aria-label': 'Una unidad menos', text: '−' });
+      if (it.qty <= 1) minus.disabled = true;
+      const stepper = el('div', { class: 'stepper' },
+        minus,
+        el('span', { class: 'n', text: String(it.qty) }),
+        el('button', { type: 'button', 'data-act': 'plus', 'aria-label': 'Una unidad más', text: '+' })
+      );
+      li.append(el('div', { class: 'ctl' },
+        stepper,
+        el('span', { class: 'spacer' }),
+        el('button', { class: 'link', type: 'button', 'data-act': 'edit', text: 'Editar' }),
+        trashButton({ 'data-act': 'remove' }, 'Quitar')
+      ));
+      ul.append(li);
+    }
+
+    $('#total').textContent = money.format(total);
+    $('#count').textContent = list.length
+      ? `${units} ${units === 1 ? 'unidad' : 'unidades'} en ${list.length} ${list.length === 1 ? 'producto' : 'productos'}`
+      : 'Lista vacía';
+    $('#empty').hidden = list.length > 0;
+    $('#foot').hidden = list.length === 0;
+  }
+
+  $('#items').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const key = btn.closest('.row').dataset.key;
+    const it = list.find((i) => i.key === key);
+    if (!it) return;
+    const act = btn.dataset.act;
+    if (act === 'plus') { it.qty += 1; }
+    else if (act === 'minus') { it.qty = Math.max(1, it.qty - 1); }
+    else if (act === 'remove') {
+      askConfirm({
+        title: '¿Quitar este producto?',
+        text: 'Se quitará de la lista de la compra actual.',
+        okText: 'Sí, quitar',
+        item: { image: it.image, name: it.name, meta: `${it.qty} × ${money.format(it.price)}`, amount: money.format(it.price * it.qty) }
+      }).then((ok) => {
+        if (!ok) return;
+        list = list.filter((i) => i.key !== key);
+        persist(); render();
+        toast(`Quitado: ${it.name}`);
+      });
+      return;
+    }
+    else if (act === 'edit') { openItem({ mode: 'edit', key }); return; }
+    persist(); render();
+  });
+
+  $('#clearBtn').addEventListener('click', () => {
+    if (!list.length) return;
+    const { total, units } = listTotals(list);
+    askConfirm({
+      title: '¿Vaciar la lista?',
+      text: 'Se quitarán todos los productos y la compra no se guardará en el historial. Si ya has terminado, usa «Terminar compra».',
+      okText: 'Sí, vaciar',
+      item: { name: 'Lista actual', meta: `${plural(units, 'unidad', 'unidades')} en ${plural(list.length, 'producto', 'productos')}`, amount: money.format(total) }
+    }).then((ok) => {
+      if (!ok) return;
+      list = []; persist(); render();
+      toast('Lista vaciada');
+    });
+  });
+
+  /* ---------- Búsqueda del producto por código de barras ---------- */
+  async function fetchJSON(url, ms = 7000) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(url, { signal: ctl.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } finally { clearTimeout(t); }
+  }
+
+  /* Nombre e imagen: Open Food Facts. Precio de referencia: Open Prices (colaborativo, puede no ser de Eroski). */
+  async function lookupOnline(code) {
+    const [off, prices] = await Promise.allSettled([
+      fetchJSON(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_es,generic_name_es,brands,quantity,image_front_small_url`),
+      fetchJSON(`https://prices.openfoodfacts.org/api/v1/prices?product_code=${code}&currency=EUR&order_by=-date&size=20`)
+    ]);
+    const out = { reached: off.status === 'fulfilled' || prices.status === 'fulfilled' };
+
+    if (off.status === 'fulfilled' && off.value && off.value.status === 1 && off.value.product) {
+      const p = off.value.product;
+      const base = (p.product_name_es || p.product_name || p.generic_name_es || '').trim();
+      const brand = (p.brands || '').split(',')[0].trim();
+      const qty = (p.quantity || '').trim();
+      if (base) {
+        out.name = [base, brand && !base.toLowerCase().includes(brand.toLowerCase()) ? brand : '', qty]
+          .filter(Boolean).join(', ');
+      }
+      out.image = safeUrl(p.image_front_small_url);
+    }
+    if (prices.status === 'fulfilled' && prices.value && Array.isArray(prices.value.items)) {
+      const valid = prices.value.items
+        .map((x) => ({ ...x, p: Number(x.price) }))
+        .filter((x) => Number.isFinite(x.p) && x.p > 0 && (!x.price_per || x.price_per === 'UNIT'));
+      const isEroski = (x) => /eroski/i.test(
+        [x.location && x.location.osm_name, x.location && x.location.osm_brand, x.location && x.location.osm_display_name]
+          .filter(Boolean).join(' ')
+      );
+      const hit = valid.find(isEroski) || valid[0];
+      if (hit) { out.price = hit.p; out.priceEroski = isEroski(hit); out.priceDate = hit.date || ''; }
+    }
+    return out;
+  }
+
+  /* ---------- Escáner de cámara ---------- */
+  let scanner = null, handled = false;
+  let scanTry = null;   // estado de los intentos: {fails, code, count, lastAt, timer}
+
+  const MAX_ATTEMPTS = 3;    // intentos antes de pedir el número a mano
+  const NEED_MATCHES = 2;    // lecturas idénticas necesarias para dar el código por bueno
+  const MIN_GAP_MS = 350;    // separación mínima entre dos lecturas para que cuenten como comprobación
+  const ATTEMPT_MS = 8000;   // tiempo máximo de cada intento
+
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureScannerLib() {
+    if (window.Html5Qrcode) return;
+    const urls = [
+      'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
+      'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
+    ];
+    for (const u of urls) {
+      try { await loadScript(u); if (window.Html5Qrcode) return; } catch (e) { /* prueba el siguiente */ }
+    }
+    throw new Error('no-lib');
+  }
+
+  function scanMsg(text, isError = false) {
+    const m = $('#scanMsg');
+    m.textContent = text;
+    m.classList.toggle('err', isError);
+  }
+
+  function cameraErrorText(err) {
+    const s = String((err && err.message) || err || '');
+    if (s === 'no-lib') return 'No se pudo cargar el lector de códigos (¿sin conexión?). Puedes escribir el número del código.';
+    if (!window.isSecureContext) return 'La cámara solo funciona si la página se abre con https:// o desde localhost. Puedes escribir el número del código.';
+    if (/permission|notallowed/i.test(s)) return 'La cámara está bloqueada. Permite el acceso en los ajustes del navegador o escribe el número del código.';
+    if (/notfound|requested device|no camera/i.test(s)) return 'No encuentro ninguna cámara. Escribe el número del código.';
+    return 'No se pudo iniciar la cámara. Puedes escribir el número del código.';
+  }
+
+  function updateAttemptUI(gaveUp = false) {
+    const fails = scanTry ? scanTry.fails : 0;
+    document.querySelectorAll('#attempts i').forEach((dot, i) => {
+      dot.className = (gaveUp || i < fails) ? 'bad' : (i === fails ? 'cur' : '');
+    });
+    $('#attemptLabel').textContent = gaveUp
+      ? 'Sin lectura fiable'
+      : `Intento ${Math.min(fails + 1, MAX_ATTEMPTS)} de ${MAX_ATTEMPTS}`;
+  }
+
+  function beginAttempt() {
+    clearTimeout(scanTry.timer);
+    scanTry.code = null; scanTry.count = 0; scanTry.lastAt = 0;
+    scanTry.timer = setTimeout(() => failAttempt(scanTry && scanTry.code ? 'unconfirmed' : 'timeout'), ATTEMPT_MS);
+    updateAttemptUI();
+  }
+
+  function failAttempt(reason) {
+    if (handled || !scanTry) return;
+    scanTry.fails += 1;
+    if (scanTry.fails >= MAX_ATTEMPTS) { giveUp(); return; }
+    const n = scanTry.fails + 1;
+    const why = {
+      mismatch: 'Las lecturas no coinciden, así que las descarto.',
+      unconfirmed: 'No he podido confirmar la lectura.',
+      timeout: 'No detecto ningún código.'
+    }[reason];
+    scanMsg(`${why} Intento ${n} de ${MAX_ATTEMPTS}: mantén el móvil quieto, con buena luz y a unos 15 cm.`, true);
+    beginAttempt();
+  }
+
+  function giveUp() {
+    clearTimeout(scanTry.timer);
+    handled = true;                       // se ignoran los fotogramas que queden
+    stopScan();
+    updateAttemptUI(true);
+    scanMsg('No he conseguido leer el código con seguridad después de 3 intentos. Escribe a mano el número que aparece debajo de las barras.', true);
+    $('#rescanBtn').hidden = false;
+    $('#codeIn').focus();
+  }
+
+  function acceptCode(code) {
+    handled = true;
+    clearTimeout(scanTry && scanTry.timer);
+    if (navigator.vibrate) navigator.vibrate(80);
+    $('#scanDlg').close();
+    openItem({ code });
+  }
+
+  /* Doble comprobación: el código solo vale si se lee el mismo número dos veces seguidas.
+     Si las lecturas no coinciden, o no llega ninguna a tiempo, se cuenta un intento fallido. */
+  function onDecoded(text) {
+    if (handled || !scanTry) return;
+    const code = String(text).replace(/\D/g, '');
+    if (!validBarcode(code)) return;                 // dígito de control incorrecto: lectura mala, se descarta
+    const now = Date.now();
+
+    if (scanTry.code === null) {                     // primera lectura
+      scanTry.code = code; scanTry.count = 1; scanTry.lastAt = now;
+      scanMsg(`He leído ${code}. Comprobando, mantén el móvil quieto…`);
+      return;
+    }
+    if (scanTry.code !== code) { failAttempt('mismatch'); return; }
+    if (now - scanTry.lastAt < MIN_GAP_MS) return;   // el mismo fotograma casi al instante no cuenta
+
+    scanTry.count += 1; scanTry.lastAt = now;
+    if (scanTry.count >= NEED_MATCHES) acceptCode(code);
+  }
+
+  async function startScanner() {
+    handled = false;
+    $('#rescanBtn').hidden = true;
+    scanTry = { fails: 0, code: null, count: 0, lastAt: 0, timer: null };
+    updateAttemptUI();
+    scanMsg('Iniciando cámara…');
+    try {
+      await ensureScannerLib();
+      await stopScan();
+      scanner = new Html5Qrcode('reader', {
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ],
+        useBarCodeDetectorIfSupported: true,
+        verbose: false
+      });
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: (w, h) => ({ width: Math.max(160, Math.min(320, w - 24)), height: Math.max(90, Math.min(160, h - 24)) }) },
+        onDecoded,
+        () => { /* fotogramas sin código: se ignoran */ }
+      );
+      if (!$('#scanDlg').open) { stopScan(); return; }   // se cerró mientras arrancaba
+      scanMsg('Apunta al código de barras. Lo leeré dos veces para asegurarme.');
+      beginAttempt();
+    } catch (err) {
+      scanMsg(cameraErrorText(err), true);
+    }
+  }
+
+  async function openScan() {
+    $('#codeIn').value = '';
+    $('#scanDlg').showModal();
+    await startScanner();
+  }
+
+  async function stopScan() {
+    if (!scanner) return;
+    const s = scanner; scanner = null;
+    try { await s.stop(); } catch (e) { /* no estaba en marcha */ }
+    try { s.clear(); } catch (e) { /* nada que limpiar */ }
+  }
+
+  $('#scanBtn').addEventListener('click', openScan);
+  $('#scanClose').addEventListener('click', () => $('#scanDlg').close());
+  $('#scanDlg').addEventListener('close', () => {
+    if (scanTry) clearTimeout(scanTry.timer);
+    scanTry = null;
+    stopScan();
+  });
+  $('#rescanBtn').addEventListener('click', startScanner);
+
+  $('#codeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = $('#codeIn').value.replace(/\D/g, '');
+    if (!validBarcode(code)) { scanMsg('Ese número no parece un código de barras válido. Revisa los dígitos (8, 12 o 13).', true); return; }
+    handled = true;
+    $('#scanDlg').close();
+    openItem({ code });
+  });
+
+  /* ---------- Diálogo de producto ---------- */
+  const nameIn = $('#nameIn'), qtyIn = $('#qtyIn'), priceIn = $('#priceIn');
+  let state = null, lookupToken = 0;
+
+  function setImage(url) {
+    const img = $('#itemImg');
+    const u = safeUrl(url);
+    if (u) { img.src = u; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+  }
+
+  function updateSubtotal() {
+    const q = parseInt(qtyIn.value, 10);
+    const p = parsePrice(priceIn.value);
+    $('#subtotal').textContent = (q > 0 && p !== null) ? money.format(q * p) : '—';
+  }
+
+  function updateLink() {
+    const term = nameIn.value.trim();
+    $('#eroskiLink').href = term
+      ? 'https://supermercado.eroski.es/es/search/results/?q=' + encodeURIComponent(term)
+      : 'https://supermercado.eroski.es/';
+  }
+
+  function setPriceHint(text, warn = false) {
+    const h = $('#priceHint');
+    h.textContent = text;
+    h.classList.toggle('warn', warn);
+  }
+
+  /* Si el precio viene sugerido, se muestra grande para confirmarlo; con «Corregir» se edita */
+  function refreshPriceMode() {
+    if (!state) return;
+    const p = parsePrice(priceIn.value);
+    const proposed = state.proposed && !state.editing && p !== null;
+    $('#priceView').hidden = !proposed;
+    $('#priceEdit').hidden = proposed;
+    if (proposed) $('#priceBig').textContent = money.format(p);
+    $('#itemOk').textContent = state.mode === 'edit' ? 'Guardar cambios'
+      : (proposed ? 'Es correcto, añadir' : 'Confirmar y añadir');
+  }
+
+  function openItem({ code = '', key = null, mode = 'add' } = {}) {
+    const inList = mode === 'edit'
+      ? list.find((i) => i.key === key)
+      : (code ? list.find((i) => i.key === code) : null);
+    const saved = inList || (code ? catalog[code] : null);
+    const token = ++lookupToken;
+
+    state = {
+      mode, code: inList ? inList.code : code, existing: inList || null,
+      dirtyName: false, dirtyPrice: false, image: (saved && saved.image) || '',
+      proposed: false, editing: false
+    };
+
+    $('#itemTitle').textContent = mode === 'edit' ? 'Editar producto' : 'Añadir a la compra';
+    nameIn.value = (saved && saved.name) || '';
+    priceIn.value = (saved && typeof saved.price === 'number') ? fmtInput(saved.price) : '';
+    qtyIn.value = mode === 'edit' && inList ? inList.qty : 1;
+    $('#codeLine').textContent = state.code ? `Código de barras ${state.code}` : 'Producto sin código de barras';
+    $('#formError').textContent = '';
+    $('#lookupStatus').textContent = '';
+    setImage(state.image);
+
+    const notice = $('#notice');
+    if (mode === 'add' && inList) {
+      notice.textContent = `Ya llevas ${inList.qty} de este producto. Lo que elijas se sumará.`;
+      notice.hidden = false;
+    } else { notice.hidden = true; }
+
+    const hasSaved = !!(saved && typeof saved.price === 'number');
+    state.proposed = mode === 'add' && hasSaved;     // precio ya conocido: solo hay que confirmarlo
+    setPriceHint(hasSaved
+      ? (mode === 'add'
+          ? 'Es el precio de tu última compra. Si en la etiqueta pone otro, pulsa «Corregir».'
+          : 'Cambia el precio si ha subido o bajado.')
+      : 'Escribe el precio como aparece en la etiqueta. Lo recordaré la próxima vez que escanees este producto.');
+
+    refreshPriceMode();
+    updateSubtotal(); updateLink();
+    $('#itemDlg').showModal();
+
+    // Enfoca lo primero que falta
+    if (!nameIn.value) nameIn.focus();
+    else if (!state.proposed && !priceIn.value) priceIn.focus();
+
+    if (code && !saved) {
+      $('#lookupStatus').textContent = 'Buscando el producto…';
+      lookupOnline(code).then((r) => {
+        if (token !== lookupToken || !state) return;
+        const found = [];
+        if (r.name && !state.dirtyName) { nameIn.value = r.name; found.push('nombre'); }
+        if (r.image) { state.image = r.image; setImage(r.image); }
+        if (typeof r.price === 'number' && !state.dirtyPrice && !state.editing) {
+          priceIn.value = fmtInput(r.price);
+          const when = r.priceDate ? ` (${r.priceDate})` : '';
+          if (r.priceEroski) {
+            // Precio visto en un Eroski: solo hay que confirmarlo
+            state.proposed = true;
+            setPriceHint(`Precio anotado por otro usuario en un Eroski${when}. Compáralo con la etiqueta y, si no coincide, pulsa «Corregir».`);
+          } else {
+            // Precio de otro comercio: se rellena, pero se deja el campo abierto para que lo revises
+            state.proposed = false;
+            setPriceHint(`Precio de referencia de otro comercio${when}. Puede no coincidir con Eroski: mira la etiqueta y ajústalo.`, true);
+          }
+          found.push('precio');
+        }
+        refreshPriceMode();
+        if (r.name) {
+          $('#lookupStatus').textContent = 'Producto encontrado.';
+        } else if (!r.reached) {
+          $('#lookupStatus').textContent = 'Sin conexión. Escribe el nombre y el precio; los recordaré.';
+        } else {
+          $('#lookupStatus').textContent = 'No conozco este código. Escribe el nombre; lo recordaré.';
+        }
+        updateSubtotal(); updateLink();
+        if (!nameIn.value) nameIn.focus();
+      }).catch(() => {
+        if (token !== lookupToken) return;
+        $('#lookupStatus').textContent = 'No he podido consultarlo. Escribe el nombre y el precio a mano.';
+      });
+    }
+  }
+
+  nameIn.addEventListener('input', () => { if (state) state.dirtyName = true; updateLink(); });
+  $('#priceFix').addEventListener('click', () => {
+    if (!state) return;
+    state.editing = true; state.dirtyPrice = true;
+    refreshPriceMode();
+    priceIn.focus(); priceIn.select();
+  });
+  /* El precio solo admite dígitos y una coma decimal (máx. 2 decimales). El punto se convierte en coma. */
+  function sanitizePrice(v) {
+    v = v.replace(/\./g, ',').replace(/[^\d,]/g, '');
+    const i = v.indexOf(',');
+    if (i !== -1) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/,/g, '').slice(0, 2);
+    return v;
+  }
+  const onlyDigits = (v) => v.replace(/\D/g, '');
+
+  priceIn.addEventListener('input', () => {
+    const clean = sanitizePrice(priceIn.value);
+    if (clean !== priceIn.value) priceIn.value = clean;
+    if (state) state.dirtyPrice = true;
+    updateSubtotal();
+  });
+  qtyIn.addEventListener('input', () => {
+    const clean = onlyDigits(qtyIn.value);
+    if (clean !== qtyIn.value) qtyIn.value = clean;
+    updateSubtotal();
+  });
+  $('#codeIn').addEventListener('input', () => {
+    const box = $('#codeIn');
+    const clean = onlyDigits(box.value);
+    if (clean !== box.value) box.value = clean;
+  });
+  $('#qtyMinus').addEventListener('click', () => {
+    qtyIn.value = Math.max(1, (parseInt(qtyIn.value, 10) || 1) - 1); updateSubtotal();
+  });
+  $('#qtyPlus').addEventListener('click', () => {
+    qtyIn.value = (parseInt(qtyIn.value, 10) || 0) + 1; updateSubtotal();
+  });
+
+  const closeItem = () => $('#itemDlg').close();
+  $('#itemClose').addEventListener('click', closeItem);
+  $('#itemCancel').addEventListener('click', closeItem);
+  $('#itemDlg').addEventListener('close', () => { lookupToken++; state = null; });
+
+  $('#itemForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err = $('#formError');
+    const name = nameIn.value.trim();
+    const qty = parseInt(qtyIn.value, 10);
+    const price = parsePrice(priceIn.value);
+
+    if (!name) { err.textContent = 'Escribe el nombre del producto.'; nameIn.focus(); return; }
+    if (!(qty >= 1)) { err.textContent = 'La cantidad tiene que ser 1 o más.'; qtyIn.focus(); return; }
+    if (price === null) { err.textContent = 'Escribe el precio por unidad, por ejemplo 1,29.'; priceIn.focus(); return; }
+
+    const image = state.image || '';
+    let msg;
+
+    if (state.mode === 'edit' && state.existing) {
+      Object.assign(state.existing, { name, price, qty, image });
+      catalog[state.existing.key] = { name, price, image };
+      msg = `Guardado: ${name}`;
+    } else {
+      const key = state.code || ('n:' + name.toLowerCase());
+      const found = list.find((i) => i.key === key);
+      if (found) {
+        found.qty += qty; found.price = price; found.name = name;
+        if (image) found.image = image;
+        msg = `${qty} más de ${name}. Llevas ${found.qty}`;
+      } else {
+        list.unshift({ key, code: state.code, name, price, qty, image });
+        msg = `Añadido: ${qty} × ${name}`;
+      }
+      catalog[key] = { name, price, image };
+    }
+
+    persist(); render();
+    closeItem();
+    toast(msg);
+  });
+
+  $('#manualBtn').addEventListener('click', () => openItem({}));
+
+  /* Cierra las hojas al tocar fuera */
+  for (const id of ['#scanDlg', '#itemDlg', '#finishDlg', '#histDlg']) {
+    const d = $(id);
+    d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+  }
+
+  /* ---------- Terminar compra ---------- */
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const dateFmt = new Intl.DateTimeFormat('es-ES', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  const fmtDate = (iso) => dateFmt.format(new Date(iso));
+
+  function listTotals(items) {
+    let total = 0, units = 0;
+    for (const i of items) { total += i.price * i.qty; units += i.qty; }
+    return { total: Math.round(total * 100) / 100, units };
+  }
+
+  function openFinish() {
+    if (!list.length) return;
+    const { total, units } = listTotals(list);
+    const ul = $('#finishItems');
+    ul.replaceChildren();
+    for (const it of list) {
+      ul.append(el('li', {},
+        el('span', { class: 'pn', text: `${it.qty} × ${it.name}` }),
+        el('span', { class: 'pa', text: money.format(it.price * it.qty) })
+      ));
+    }
+    $('#finishInfo').textContent = `${plural(units, 'unidad', 'unidades')} en ${plural(list.length, 'producto', 'productos')}. Revisa que todo esté bien antes de pagar.`;
+    $('#finishTotal').textContent = money.format(total);
+    $('#finishDlg').showModal();
+  }
+
+  $('#finishBtn').addEventListener('click', openFinish);
+  $('#finishClose').addEventListener('click', () => $('#finishDlg').close());
+  $('#finishBack').addEventListener('click', () => $('#finishDlg').close());
+
+  $('#finishOk').addEventListener('click', () => {
+    if (!list.length) { $('#finishDlg').close(); return; }
+    const { total, units } = listTotals(list);
+    const purchase = {
+      id: Date.now().toString(36),
+      date: new Date().toISOString(),
+      items: list.map((i) => ({ ...i })),
+      total, units
+    };
+    history.unshift(purchase);
+    list = [];
+    persist(); render();
+    $('#finishDlg').close();
+    openHistory('purchases', purchase.id);
+    toast(`Compra guardada: ${money.format(total)}`);
+  });
+
+  /* ---------- Historial ---------- */
+  let histTab = 'purchases', histOpen = null, aggCache = [];
+
+  function openHistory(tab = 'purchases', openId = null) {
+    histTab = tab; histOpen = openId;
+    renderHistory();
+    $('#histDlg').showModal();
+  }
+
+  function addToList(it, qty) {
+    const cat = catalog[it.key];
+    const price = cat && typeof cat.price === 'number' ? cat.price : it.price;
+    const found = list.find((i) => i.key === it.key);
+    if (found) found.qty += qty;
+    else list.unshift({ key: it.key, code: it.code || '', name: it.name, price, qty, image: it.image || '' });
+  }
+
+  function renderHistory() {
+    for (const t of document.querySelectorAll('#histDlg .tab')) {
+      t.setAttribute('aria-selected', String(t.dataset.tab === histTab));
+    }
+    const box = $('#histBody');
+    box.replaceChildren();
+
+    if (!history.length) {
+      box.append(el('div', { class: 'empty' },
+        el('strong', { text: 'Aún no has terminado ninguna compra' }),
+        'Cuando pulses «Terminar compra», aparecerá aquí con todos sus productos.'
+      ));
+      return;
+    }
+
+    if (histTab === 'purchases') {
+      const spent = history.reduce((s, p) => s + p.total, 0);
+      box.append(el('p', { class: 'hsum', text: `${plural(history.length, 'compra', 'compras')}, ${money.format(spent)} en total.` }));
+      for (const p of history) {
+        const d = el('details', { class: 'purchase' });
+        if (p.id === histOpen) d.open = true;
+        d.append(el('summary', {},
+          el('div', { class: 'pinfo' },
+            el('div', { class: 'pdate', text: fmtDate(p.date) }),
+            el('div', { class: 'pmeta', text: `${plural(p.units, 'unidad', 'unidades')} en ${plural(p.items.length, 'producto', 'productos')}` })
+          ),
+          el('span', { class: 'ptotal', text: money.format(p.total) })
+        ));
+        const ul = el('ul', { class: 'plist' });
+        for (const it of p.items) {
+          ul.append(el('li', {},
+            el('span', { class: 'pn', text: `${it.qty} × ${it.name} (${money.format(it.price)})` }),
+            el('span', { class: 'pa', text: money.format(it.price * it.qty) })
+          ));
+        }
+        d.append(ul, el('div', { class: 'pactions' },
+          el('button', { class: 'btn', type: 'button', 'data-act': 'repeat', 'data-id': p.id, text: 'Repetir esta compra' }),
+          trashButton({ 'data-act': 'delete', 'data-id': p.id }, 'Borrar')
+        ));
+        box.append(d);
+      }
+      return;
+    }
+
+    // Pestaña «Productos comprados»: todos los productos de todas las compras, sumados
+    const map = new Map();
+    for (const p of history) {          // el historial va de más nuevo a más antiguo
+      for (const it of p.items) {
+        let a = map.get(it.key);
+        if (!a) { a = { key: it.key, code: it.code, name: it.name, image: it.image, lastPrice: it.price, units: 0, spent: 0, times: 0 }; map.set(it.key, a); }
+        a.units += it.qty; a.spent += it.qty * it.price; a.times += 1;
+      }
+    }
+    aggCache = [...map.values()].sort((a, b) => b.units - a.units || a.name.localeCompare(b.name, 'es'));
+    box.append(el('p', { class: 'hsum', text: `${plural(aggCache.length, 'producto distinto', 'productos distintos')} en ${plural(history.length, 'compra', 'compras')}.` }));
+    for (const a of aggCache) {
+      box.append(el('div', { class: 'prow' },
+        el('div', {},
+          el('div', { class: 'name', text: a.name }),
+          el('div', { class: 'meta', text: `${plural(a.units, 'unidad', 'unidades')} en ${plural(a.times, 'compra', 'compras')}, último precio ${money.format(a.lastPrice)}` })
+        ),
+        el('div', { class: 'amount', text: money.format(a.spent) }),
+        el('button', { class: 'link', type: 'button', 'data-act': 'quickadd', 'data-key': a.key, text: 'Añadir 1 a la lista' })
+      ));
+    }
+  }
+
+  $('#histBtn').addEventListener('click', () => openHistory('purchases'));
+  $('#histClose').addEventListener('click', () => $('#histDlg').close());
+  for (const t of document.querySelectorAll('#histDlg .tab')) {
+    t.addEventListener('click', () => { histTab = t.dataset.tab; histOpen = null; renderHistory(); });
+  }
+
+  $('#histBody').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const act = b.dataset.act;
+
+    if (act === 'delete') {
+      const p = history.find((x) => x.id === b.dataset.id);
+      if (!p) return;
+      askConfirm({
+        title: '¿Borrar esta compra?',
+        text: 'Desaparecerá del historial y de la lista de productos comprados. No se puede deshacer.',
+        okText: 'Sí, borrar',
+        item: { name: fmtDate(p.date), meta: `${plural(p.units, 'unidad', 'unidades')} en ${plural(p.items.length, 'producto', 'productos')}`, amount: money.format(p.total) }
+      }).then((ok) => {
+        if (!ok) return;
+        history = history.filter((x) => x.id !== p.id);
+        persist(); renderHistory();
+        toast('Compra borrada');
+      });
+    } else if (act === 'repeat') {
+      const p = history.find((x) => x.id === b.dataset.id);
+      if (!p) return;
+      p.items.forEach((it) => addToList(it, it.qty));
+      persist(); render();
+      $('#histDlg').close();
+      toast(`${plural(p.items.length, 'producto añadido', 'productos añadidos')} a la lista`);
+    } else if (act === 'quickadd') {
+      const a = aggCache.find((x) => x.key === b.dataset.key);
+      if (!a) return;
+      addToList({ key: a.key, code: a.code, name: a.name, price: a.lastPrice, image: a.image }, 1);
+      persist(); render();
+      toast(`Añadido: ${a.name}`);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
